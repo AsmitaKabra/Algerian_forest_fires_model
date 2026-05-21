@@ -1,24 +1,25 @@
-from flask import Flask , request , jsonify , render_template
+from flask import Flask, request, render_template
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
 import pickle
 
 application = Flask(__name__)
 app = application
 
-#import ridge regressor and standard scaler pickle
-ridge_model = pickle.load(open('models/ridge.pkl','rb'))
-standard_scaler = pickle.load(open('models/scaler.pkl','rb'))
+# Load model and scaler
+ridge_model = pickle.load(open('models/ridge.pkl', 'rb'))
+standard_scaler = pickle.load(open('models/scaler.pkl', 'rb'))
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("home.html")
 
-@app.route("/predictdata",methods = ['GET','POST'])
+
+@app.route("/predictdata", methods=['GET', 'POST'])
 def predict_datapoint():
+
     if request.method == 'POST':
+
         Temperature = float(request.form.get('Temperature'))
         RH = float(request.form.get('RH'))
         Ws = float(request.form.get('Ws'))
@@ -29,15 +30,41 @@ def predict_datapoint():
         Classes = float(request.form.get('Classes'))
         Region = float(request.form.get('Region'))
 
-        new_data_scaled = standard_scaler.transform([[Temperature, RH, Ws, Rain, FFMC, DMC, ISI, Classes, Region]])
+        new_data_scaled = standard_scaler.transform([[
+            Temperature,
+            RH,
+            Ws,
+            Rain,
+            FFMC,
+            DMC,
+            ISI,
+            Classes,
+            Region
+        ]])
 
         result = ridge_model.predict(new_data_scaled)
 
-        return render_template('home.html', results=result[0])
+        prediction = round(result[0], 2)
 
+        # Risk Category
+        if prediction < 5:
+            risk = "🟢 Low Fire Risk"
+
+        elif prediction < 15:
+            risk = "🟠 Moderate Fire Risk"
+
+        else:
+            risk = "🔴 High Fire Risk"
+
+        return render_template(
+            'home.html',
+            results=prediction,
+            risk=risk
+        )
 
     else:
         return render_template("home.html")
 
+
 if __name__ == "__main__":
-    app.run(host = "0.0.0.0")
+    app.run(host="0.0.0.0", debug=True)
